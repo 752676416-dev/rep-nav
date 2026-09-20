@@ -1,0 +1,1353 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="format-detection" content="telephone=no">
+<meta name="theme-color" content="#4a90d9">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="预约导航">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<title>🏥 医院预约导航</title>
+<script>
+/* 尽早应用主题，避免暗色模式闪白 */
+(function () {
+  try {
+    var p = localStorage.getItem('hosp_nav_theme') || 'auto';
+    var dark = p === 'dark' || (p === 'auto' && window.matchMedia &&
+               window.matchMedia('(prefers-color-scheme: dark)').matches);
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  } catch (e) {}
+})();
+</script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body {
+    font-family:-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background:#f5f7fa; color:#1a2a3a; min-height:100vh;
+  }
+  #app { width:390px; max-width:100vw; min-height:100vh; padding:18px 14px 22px; background:#f5f7fa; }
+
+  /* ===== 头部 ===== */
+  .header { text-align:center; padding:10px 0 14px; position:relative; }
+  .theme-btn {
+    position:absolute; top:4px; right:0; width:34px; height:34px; border-radius:50%;
+    border:none; background:#eef3f9; color:#5a6a7a; font-size:15px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; font-family:inherit;
+  }
+  .theme-btn:active { background:#e0e9f3; }
+  .header-icon { font-size:40px; display:block; }
+  .header-title { font-size:21px; font-weight:700; display:block; margin-top:4px; }
+  .header-tip { font-size:11px; color:#8a9baa; display:block; margin-top:5px; }
+
+  /* ===== 搜索 ===== */
+  .search-wrap { position:relative; margin-bottom:12px; }
+  .search-wrap input {
+    width:100%; height:38px; border:none; border-radius:10px; background:#fff;
+    padding:0 34px 0 34px; font-size:13px; outline:none; color:#1a2a3a;
+    box-shadow:0 1px 6px rgba(0,0,0,0.05); font-family:inherit;
+  }
+  .search-wrap .s-icon { position:absolute; left:11px; top:9px; font-size:14px; color:#a8b6c4; }
+  .search-wrap .s-clear {
+    position:absolute; right:8px; top:8px; width:22px; height:22px; border-radius:50%;
+    background:#e8edf3; color:#7a8a9a; font-size:12px; line-height:22px; text-align:center;
+    display:none; cursor:pointer;
+  }
+  .search-wrap.has-val .s-clear { display:block; }
+
+  /* ===== 分组标题 ===== */
+  .group-title { font-size:12px; color:#8a9baa; margin:14px 2px 8px; display:flex; justify-content:space-between; }
+
+  /* ===== 网格 ===== */
+  .grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:9px; }
+
+  .card {
+    background:#fff; border-radius:13px; padding:12px 5px 10px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    box-shadow:0 2px 8px rgba(0,0,0,0.06); position:relative; cursor:pointer;
+    min-height:92px; transition:transform .12s; user-select:none; -webkit-user-select:none;
+  }
+  .card:active { transform:scale(.94); background:#f8faff; }
+  .card-icon {
+    width:38px; height:38px; border-radius:50%; background:#f0f6ff;
+    display:flex; align-items:center; justify-content:center; font-size:19px; margin-bottom:5px;
+  }
+  .card-name { font-size:11px; font-weight:600; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; line-height:1.3; }
+  .card-desc { font-size:9px; color:#8a9baa; margin-top:2px; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .card-tag { position:absolute; top:5px; right:5px; font-size:8px; padding:1px 5px; border-radius:7px; line-height:1.5; }
+  .tag-web  { background:#e8f4fd; color:#2e7fb8; }
+  .tag-mini { background:#e8fae8; color:#2e8b57; }
+  .tag-tel  { background:#fdeaea; color:#c0504d; }
+  .tag-map  { background:#f1ecfd; color:#6b4fc9; }
+  .tag-copy { background:#fdf3e3; color:#b07c2e; }
+
+  .card-add { background:#f8faff; border:1.5px dashed #c0d4e8; box-shadow:none; }
+  .card-add:active { background:#eef4ff; }
+  .add-icon { font-size:24px; color:#4a90d9; font-weight:300; line-height:1; }
+  .add-text { font-size:10px; color:#4a90d9; margin-top:3px; }
+
+  /* ===== 空状态 ===== */
+  .empty { text-align:center; padding:40px 20px 24px; }
+  .empty-circle {
+    width:86px; height:86px; border-radius:50%; border:2px dashed #c0d4e8;
+    display:flex; align-items:center; justify-content:center; margin:0 auto 16px;
+    font-size:34px; color:#4a90d9; font-weight:300; cursor:pointer; background:#f8faff;
+  }
+  .empty-circle:active { background:#eef4ff; }
+  .empty-title { font-size:14px; font-weight:600; color:#3a4a5a; }
+  .empty-sub { font-size:11.5px; color:#8a9baa; margin-top:7px; line-height:1.7; }
+
+  /* ===== 说明 ===== */
+  .footer {
+    margin-top:22px; background:#fff; border-radius:12px; padding:13px 15px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.04); font-size:11.5px; color:#5a6a7a; line-height:1.9;
+  }
+  .footer b { color:#2c3e50; }
+
+  /* ===== 弹窗 ===== */
+  .mask {
+    position:fixed; inset:0; background:rgba(0,0,0,0.45); display:none;
+    align-items:center; justify-content:center; z-index:100; padding:16px;
+  }
+  .mask.show { display:flex; }
+  .modal {
+    width:100%; max-width:352px; background:#fff; border-radius:16px; padding:20px 18px;
+    max-height:86vh; overflow-y:auto;
+  }
+  .modal h3 { font-size:16px; margin-bottom:14px; text-align:center; }
+  .modal .row { margin-bottom:11px; }
+  .modal label { font-size:11.5px; color:#8a9baa; display:block; margin-bottom:5px; }
+  .modal input, .modal select, .modal textarea {
+    width:100%; border:1px solid #e0e6ee; border-radius:9px; padding:9px 10px;
+    font-size:14px; outline:none; background:#fafbfc; font-family:inherit; color:#1a2a3a;
+  }
+  .modal input:focus, .modal textarea:focus, .modal select:focus { border-color:#4a90d9; background:#fff; }
+  .modal textarea { resize:vertical; min-height:46px; }
+  .modal .hint { font-size:10.5px; color:#a8b6c4; margin-top:5px; line-height:1.6; }
+  .modal .btns { display:flex; gap:10px; margin-top:16px; }
+  .modal .btns button { flex:1; border:none; border-radius:10px; height:42px; font-size:15px; cursor:pointer; font-family:inherit; }
+  .btn-cancel { background:#f0f2f5; color:#5a6a7a; }
+  .btn-save { background:#4a90d9; color:#fff; font-weight:600; }
+  .btn-save:active { background:#3a80c9; }
+
+  /* 图标快选 */
+  .icon-pick { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+  .icon-pick span {
+    width:32px; height:32px; border-radius:8px; background:#f4f7fb; display:flex;
+    align-items:center; justify-content:center; font-size:17px; cursor:pointer;
+  }
+  .icon-pick span:active { background:#e3ecf7; }
+
+  /* ===== 操作菜单 ===== */
+  .sheet-mask { position:fixed; inset:0; background:rgba(0,0,0,0.4); display:none; z-index:110; }
+  .sheet-mask.show { display:block; }
+  .sheet {
+    position:fixed; left:0; right:0; bottom:0; width:390px; max-width:100vw; margin:0 auto;
+    background:#fff; border-radius:18px 18px 0 0; padding:8px 0 14px; z-index:120;
+    transform:translateY(100%); transition:transform .22s; max-height:80vh; overflow-y:auto;
+  }
+  .sheet.show { transform:translateY(0); }
+  .sheet-head { padding:14px 18px 10px; border-bottom:1px solid #f0f2f5; display:flex; align-items:center; gap:9px; }
+  .sheet-head .sh-icon { font-size:22px; }
+  .sheet-head .sh-name { font-size:14px; font-weight:600; }
+  .sheet-head .sh-sub { font-size:10.5px; color:#8a9baa; margin-top:2px; word-break:break-all; }
+  .sheet-item {
+    padding:14px 18px; font-size:14.5px; display:flex; align-items:center; gap:11px; cursor:pointer;
+  }
+  .sheet-item:active { background:#f6f9fc; }
+  .sheet-item .si-icon { font-size:17px; width:22px; text-align:center; }
+  .sheet-item.danger { color:#e05656; }
+
+  /* ===== 小程序打开指引（大图 / 步骤提醒） ===== */
+  .qr-overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,0.72); display:none;
+    align-items:center; justify-content:center; z-index:150; padding:18px;
+  }
+  .qr-overlay.show { display:flex; }
+  .qr-box {
+    width:100%; max-width:308px; background:#fff; border-radius:16px;
+    padding:18px 16px 14px; text-align:center; max-height:88vh; overflow-y:auto;
+  }
+  .qr-title { font-size:15px; font-weight:600; margin-bottom:3px; }
+  .qr-sub { font-size:10.5px; color:#8a9baa; margin-bottom:12px; }
+  .qr-img { width:100%; max-width:220px; height:auto; border-radius:10px; display:block; margin:0 auto; }
+  .qr-hint { font-size:11.5px; color:#4a90d9; margin-top:10px; line-height:1.75; }
+
+  .steps-title { font-size:12.5px; font-weight:600; color:#3a4a5a; text-align:left; margin:2px 0 8px; }
+  .steps { margin:0 0 10px; padding-left:20px; text-align:left; }
+  .steps li { font-size:12px; color:#4a5a6a; line-height:1.85; margin-bottom:3px; }
+  .steps li b { color:#2c3e50; }
+  .steps-note {
+    font-size:11px; color:#8a9baa; background:#f7faff; border-radius:9px;
+    padding:9px 11px; text-align:left; line-height:1.75; margin-bottom:4px;
+  }
+  .steps-note b { color:#4a90d9; }
+
+  .qr-copy {
+    margin-top:12px; width:100%; height:42px; border:none; border-radius:10px;
+    background:#4a90d9; color:#fff; font-size:15px; font-weight:600;
+    font-family:inherit; cursor:pointer;
+  }
+  .qr-copy:active { background:#3a80c9; }
+  .qr-close {
+    margin-top:9px; width:100%; height:40px; border:none; border-radius:10px;
+    background:#f0f2f5; color:#5a6a7a; font-size:14.5px; font-family:inherit; cursor:pointer;
+  }
+  .qr-close:active { background:#e6e9ee; }
+
+  .modal-steps {
+    background:#f7faff; border-radius:10px; padding:10px 12px; margin-top:7px;
+    font-size:11.5px; color:#5a6a7a; line-height:1.85; text-align:left;
+  }
+  .modal-steps b { color:#2c3e50; }
+  .modal-steps .ms-t { font-weight:600; color:#3a4a5a; display:block; margin-bottom:4px; }
+
+  /* ===== 拜访排班表 ===== */
+  .sched {
+    margin-top:14px; background:#fff; border-radius:12px; padding:14px 14px 12px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.04);
+  }
+  .sched-head { display:flex; align-items:baseline; justify-content:space-between; margin-bottom:9px; }
+  .sched-title { font-size:14px; font-weight:700; color:#2c3e50; }
+  .sched-range { font-size:10.5px; color:#8a9baa; }
+  .sched-nav { display:flex; gap:7px; margin-bottom:9px; }
+  .sched-nav button {
+    flex:1; border:none; background:#f4f7fb; color:#5a6a7a; border-radius:8px;
+    height:30px; font-size:11.5px; font-family:inherit; cursor:pointer;
+  }
+  .sched-nav button:active { background:#e8eff8; }
+  .sched-nav button.on { background:#4a90d9; color:#fff; font-weight:600; }
+
+  .srow { display:flex; gap:9px; padding:9px 5px; border-bottom:1px solid #f2f5f9; border-radius:9px; }
+  .srow:last-child { border-bottom:none; }
+  .srow.today { background:#f2f8ff; }
+  .srow .sd { width:46px; flex:0 0 46px; text-align:center; padding-top:6px; }
+  .srow .sd .w { display:block; font-size:11.5px; font-weight:600; color:#3a4a5a; }
+  .srow .sd .dt { display:block; font-size:9.5px; color:#a8b6c4; margin-top:1px; }
+  .srow.today .sd .w { color:#4a90d9; }
+  .srow.weekend .sd .w { color:#b6c2ce; }
+
+  .slots { flex:1; min-width:0; display:flex; flex-direction:column; gap:5px; }
+  .slot {
+    display:flex; align-items:flex-start; gap:7px; padding:5px 8px;
+    border-radius:8px; background:#f7fafd; cursor:pointer;
+  }
+  .slot:active { background:#eaf2fb; }
+  .slot.empty { background:#fafbfc; }
+  .half { flex:0 0 30px; font-size:10px; font-weight:600; border-radius:6px; text-align:center; padding:2px 0; }
+  .half.am { background:#fff4e3; color:#c2821b; }
+  .half.pm { background:#eef2fd; color:#5b6fc4; }
+  .slot.empty .half { opacity:.78; }
+  .slc { flex:1; min-width:0; }
+  .slh { display:block; font-size:12.5px; color:#2c3e50; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; line-height:1.35; }
+  .slot.empty .slh { color:#c8d3de; font-weight:400; }
+  .sln { display:block; font-size:10px; color:#8a9baa; margin-top:1px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  .sched-actions { display:flex; gap:7px; margin-top:11px; }
+  .sched-actions button {
+    flex:1; border:none; background:#f4f7fb; color:#5a6a7a; border-radius:9px;
+    height:34px; font-size:11px; font-family:inherit; cursor:pointer; line-height:1.2;
+  }
+  .sched-actions button:active { background:#e8eff8; }
+  .sched-actions button.primary { background:#eaf3fd; color:#2e7fb8; font-weight:600; }
+  .sched-tip { font-size:10.5px; color:#a8b6c4; margin-top:9px; line-height:1.7; }
+
+  /* ===== Toast ===== */
+  .toast {
+    position:fixed; left:50%; bottom:26px; transform:translateX(-50%);
+    background:rgba(0,0,0,0.78); color:#fff; font-size:12.5px; padding:10px 18px;
+    border-radius:20px; display:none; z-index:200; max-width:82%; text-align:center; line-height:1.5;
+  }
+
+  /* ===== 添加/安装提示条 ===== */
+  .install-row { margin-top:10px; }
+  .install-row button {
+    width:100%; border:none; border-radius:11px; height:42px; cursor:pointer;
+    background:#eaf3fd; color:#2e7fb8; font-size:13px; font-weight:600; font-family:inherit;
+  }
+  .install-row button:active { background:#dbeafc; }
+
+  /* ===== 键盘弹出时：弹窗顶部对齐、限高，避免输入框被挡 ===== */
+  body.kb-open .mask { align-items:flex-start; padding-top:10px; padding-bottom:10px; }
+  body.kb-open .modal { max-height:calc(var(--vvh, 70vh) - 22px); }
+  body.kb-open .sheet { max-height:calc(var(--vvh, 70vh) - 10px); }
+
+  /* ===== 暗色主题 ===== */
+  html[data-theme="dark"] { color-scheme:dark; }
+  html[data-theme="dark"] body,
+  html[data-theme="dark"] #app { background:#12161c; color:#e6ecf3; }
+  html[data-theme="dark"] .theme-btn { background:#232d3a; color:#c8d3de; }
+
+  html[data-theme="dark"] .header-title { color:#e6ecf3; }
+  html[data-theme="dark"] .header-tip,
+  html[data-theme="dark"] .card-desc,
+  html[data-theme="dark"] .sched-range,
+  html[data-theme="dark"] .sln,
+  html[data-theme="dark"] .empty-sub,
+  html[data-theme="dark"] .group-title,
+  html[data-theme="dark"] .sched-tip,
+  html[data-theme="dark"] .hint,
+  html[data-theme="dark"] .qr-sub,
+  html[data-theme="dark"] .modal label,
+  html[data-theme="dark"] .footer,
+  html[data-theme="dark"] .steps-note,
+  html[data-theme="dark"] .modal-steps { color:#93a1b0; }
+
+  html[data-theme="dark"] .search-wrap input {
+    background:#1c222b; color:#e6ecf3; box-shadow:none; border:1px solid #2b3441;
+  }
+  html[data-theme="dark"] .search-wrap .s-icon { color:#6d7c8c; }
+  html[data-theme="dark"] .search-wrap .s-clear { background:#2b3441; color:#93a1b0; }
+
+  html[data-theme="dark"] .card,
+  html[data-theme="dark"] .footer,
+  html[data-theme="dark"] .sched,
+  html[data-theme="dark"] .modal,
+  html[data-theme="dark"] .sheet,
+  html[data-theme="dark"] .qr-box { background:#1c222b; box-shadow:none; }
+  html[data-theme="dark"] .card { border:1px solid #262f3a; }
+  html[data-theme="dark"] .card-icon { background:#232d3a; }
+
+  html[data-theme="dark"] .card-name,
+  html[data-theme="dark"] .slh,
+  html[data-theme="dark"] .sched-title,
+  html[data-theme="dark"] .footer b,
+  html[data-theme="dark"] .steps li,
+  html[data-theme="dark"] .steps-title,
+  html[data-theme="dark"] .qr-title,
+  html[data-theme="dark"] .modal h3,
+  html[data-theme="dark"] .sh-name,
+  html[data-theme="dark"] .empty-title,
+  html[data-theme="dark"] .srow .sd .w { color:#e6ecf3; }
+  html[data-theme="dark"] .srow .sd .dt { color:#6d7c8c; }
+
+  html[data-theme="dark"] .card-add { background:#1a2029; border-color:#33414f; }
+  html[data-theme="dark"] .tag-web { background:#1d3446; color:#7ab6e6; }
+  html[data-theme="dark"] .tag-mini { background:#1b3628; color:#6fc48f; }
+  html[data-theme="dark"] .tag-tel { background:#3a2222; color:#e08a86; }
+  html[data-theme="dark"] .tag-map { background:#2a2440; color:#a894e8; }
+  html[data-theme="dark"] .tag-copy { background:#3a2f1c; color:#d5a95e; }
+
+  html[data-theme="dark"] .empty-circle { background:#1a2029; border-color:#33414f; }
+
+  html[data-theme="dark"] .modal input,
+  html[data-theme="dark"] .modal select,
+  html[data-theme="dark"] .modal textarea { background:#161b22; border-color:#2b3441; color:#e6ecf3; }
+  html[data-theme="dark"] .icon-pick span { background:#232d3a; }
+  html[data-theme="dark"] .btn-cancel,
+  html[data-theme="dark"] .qr-close { background:#262f3a; color:#b6c2ce; }
+  html[data-theme="dark"] .sheet-head { border-bottom-color:#262f3a; }
+  html[data-theme="dark"] .sheet-item { color:#dbe4ee; }
+  html[data-theme="dark"] .sheet-item:active { background:#232d3a; }
+
+  html[data-theme="dark"] .sched-nav button,
+  html[data-theme="dark"] .sched-actions button { background:#232d3a; color:#93a1b0; }
+  html[data-theme="dark"] .sched-actions button.primary { background:#1d3446; color:#7ab6e6; }
+  html[data-theme="dark"] .srow { border-bottom-color:#242c36; }
+  html[data-theme="dark"] .srow.today { background:#1a2634; }
+  html[data-theme="dark"] .slot { background:#202832; }
+  html[data-theme="dark"] .slot:active { background:#26313d; }
+  html[data-theme="dark"] .slot.empty { background:#1a2029; }
+  html[data-theme="dark"] .half.am { background:#3a2e17; color:#e0b063; }
+  html[data-theme="dark"] .half.pm { background:#212a44; color:#94a6e8; }
+  html[data-theme="dark"] .slot.empty .slh { color:#6e7d8d; }
+
+  html[data-theme="dark"] .mask,
+  html[data-theme="dark"] .sheet-mask { background:rgba(0,0,0,0.62); }
+  html[data-theme="dark"] .qr-overlay { background:rgba(0,0,0,0.78); }
+  html[data-theme="dark"] .qr-hint { color:#7ab6e6; }
+  html[data-theme="dark"] .install-row button { background:#1d3446; color:#7ab6e6; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="header">
+    <button class="theme-btn" id="btnTheme" title="切换主题">◐</button>
+    <span class="header-icon">🏥</span>
+    <span class="header-title">医院预约导航</span>
+    <span class="header-tip">医药代表专用 · 网页直跳 / 小程序复制链接</span>
+  </div>
+
+  <div class="search-wrap" id="searchWrap">
+    <span class="s-icon">🔍</span>
+    <input id="search" placeholder="搜索医院 / 科室…" autocomplete="off">
+    <span class="s-clear" id="searchClear">✕</span>
+  </div>
+
+  <div id="listArea"></div>
+
+  <div class="footer">
+    <b>📌 使用说明</b><br>
+    · <b>点击</b>卡片 → 打开该入口<br>
+    · <b>长按</b>卡片 → 编辑 / 复制链接 / 删除<br>
+    · <b>网页</b>入口点击直接跳转<br>
+    · <b>小程序</b>入口：微信不允许网页直跳小程序，点卡片会弹出<b>打开指引</b><br>
+    &nbsp;&nbsp;· 已传<b>小程序码</b> → 长按图片识别，直接进<br>
+    &nbsp;&nbsp;· 只有链接 → 按指引复制后回微信粘贴发送<br>
+    · 若你有小程序官方 <b>URL Link</b>（wxaurl.cn 开头），存成「网页」类型即可直接跳转<br>
+    · 点卡片区的 <b>＋</b> 可继续添加入口
+  </div>
+
+  <div class="install-row" id="installRow" style="display:none">
+    <button id="btnInstall">📲 添加到手机桌面</button>
+  </div>
+
+  <!-- ===== 拜访排班表 ===== -->
+  <div class="sched">
+    <div class="sched-head">
+      <span class="sched-title">📅 拜访排班表</span>
+      <span class="sched-range" id="schedRange"></span>
+    </div>
+    <div class="sched-nav">
+      <button id="schedPrev">‹ 上周</button>
+      <button id="schedToday" class="on">本周</button>
+      <button id="schedNext">下周 ›</button>
+    </div>
+    <div id="schedList"></div>
+    <div class="sched-actions">
+      <button class="primary" id="schedCopy">📤 复制排班</button>
+      <button id="schedFill">↩ 套用上周</button>
+      <button id="schedClear">🗑 清空本周</button>
+    </div>
+    <div class="sched-tip">点某天的<b>上午 / 下午</b> → 选拜访单位 + 填<b>姓名</b>和拜访目的 · 数据存在本机</div>
+  </div>
+
+</div>
+
+<!-- 添加/编辑弹窗 -->
+<div class="mask" id="mask">
+  <div class="modal">
+    <h3 id="modalTitle">＋ 添加入口</h3>
+    <div class="row">
+      <label>名称 *</label>
+      <input id="f_name" placeholder="如：深圳市龙岗中心医院" autocomplete="off">
+    </div>
+    <div class="row">
+      <label>图标</label>
+      <input id="f_icon" placeholder="默认 🏥" maxlength="4">
+      <div class="icon-pick" id="iconPick"></div>
+    </div>
+    <div class="row">
+      <label>入口类型</label>
+      <select id="f_type">
+        <option value="url">🌐 网页（点击直接跳转）</option>
+        <option value="mini">💚 小程序（复制链接到微信打开）</option>
+        <option value="tel">📞 电话（点击拨号）</option>
+        <option value="map">🗺️ 导航（高德搜该名称）</option>
+        <option value="copy">📋 复制文本（账号/地址等）</option>
+      </select>
+    </div>
+    <div class="row" id="row_url">
+      <label id="lbl_url">网页链接</label>
+      <textarea id="f_url" placeholder="https://..."></textarea>
+      <div class="hint" id="hint_url">粘贴医院预约挂号页面的完整地址</div>
+    </div>
+    <div class="row" id="row_qr" style="display:none">
+      <label>小程序码图片（推荐 · 可长按直接打开）</label>
+      <input type="file" id="f_qrfile" accept="image/*" style="padding:7px;font-size:12px;">
+      <div id="qrPreviewWrap" style="display:none;margin-top:9px;text-align:center">
+        <img id="qrPreview" style="width:140px;height:140px;object-fit:contain;border:1px solid #e6ecf3;border-radius:10px;background:#fff">
+        <div class="hint"><span id="btnQrClear" style="color:#4a90d9;cursor:pointer">✕ 清除图片</span></div>
+      </div>
+      <div class="hint">上传医院小程序码截图；有码时点卡片弹大图，长按「识别图中小程序码」直接打开</div>
+      <div class="modal-steps">
+        <span class="ms-t">📌 小程序码哪里来</span>
+        ① 在医院公众号里点进该小程序<br>
+        ② 点右上角「…」→「发送给朋友」或截图<br>
+        ③ 把带码的图片存到手机相册，再从这里上传<br>
+        <span style="color:#8a9baa">* 只有链接也行，但打开要复制粘贴，多两步</span>
+      </div>
+    </div>
+    <div class="row">
+      <label>备注（可选）</label>
+      <input id="f_note" placeholder="如：神经内科 / 药库四楼" autocomplete="off">
+    </div>
+    <div class="btns">
+      <button class="btn-cancel" id="btnCancel">取消</button>
+      <button class="btn-save" id="btnSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 长按操作菜单 -->
+<div class="sheet-mask" id="sheetMask"></div>
+<div class="sheet" id="sheet">
+  <div class="sheet-head">
+    <span class="sh-icon" id="shIcon">🏥</span>
+    <div style="flex:1;min-width:0">
+      <div class="sh-name" id="shName"></div>
+      <div class="sh-sub" id="shSub"></div>
+    </div>
+  </div>
+  <div id="sheetItems"></div>
+</div>
+
+<!-- 排班编辑弹窗 -->
+<div class="mask" id="schMask">
+  <div class="modal">
+    <h3 id="schTitle">拜访安排</h3>
+    <div class="row">
+      <label>拜访单位</label>
+      <select id="schHosp"></select>
+      <input id="schHospCustom" placeholder="医院名称" style="margin-top:7px;display:none">
+    </div>
+    <div class="row">
+      <label>姓名（拜访对象）</label>
+      <input id="schPerson" placeholder="如：张主任 / 李药师 / 王科长" autocomplete="off">
+    </div>
+    <div class="row">
+      <label>拜访目的 / 备注（可选）</label>
+      <input id="schNote" placeholder="如：送流向、对账、客情维护" autocomplete="off">
+    </div>
+    <div class="btns">
+      <button class="btn-cancel" id="schCancel">取消</button>
+      <button class="btn-save" id="schSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- 小程序打开指引：有码→长按识别；无码→分步提醒 -->
+<div class="qr-overlay" id="qrOverlay">
+  <div class="qr-box">
+    <div class="qr-title" id="qrTitle"></div>
+    <div class="qr-sub" id="qrSub">小程序</div>
+
+    <div id="qrImgWrap" style="display:none">
+      <img class="qr-img" id="qrImg" alt="小程序码">
+      <div class="qr-hint" id="qrHint"></div>
+    </div>
+
+    <div id="miniSteps" style="display:none">
+      <div class="steps-title">📋 打开步骤</div>
+      <ol class="steps">
+        <li>点下面蓝色按钮，<b>复制小程序链接</b></li>
+        <li>返回微信，进入任意聊天（发给自己或文件传输助手）</li>
+        <li>在输入框<b>长按 → 粘贴 → 发送</b></li>
+        <li>点发出的那条链接，就能打开小程序</li>
+      </ol>
+      <div class="steps-note">
+        💡 <b>省事办法</b>：让医院发你一张<b>小程序码</b>图片，长按卡片 → 编辑 → 上传，以后点开长按识别就能直接进
+      </div>
+    </div>
+
+    <button class="qr-copy" id="qrCopy">复制小程序链接</button>
+    <button class="qr-close" id="qrClose">关闭</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var STORE_KEY = 'hosp_nav_items_v1';
+
+  var TYPES = {
+    url:  { label:'网页',   tag:'网页',   cls:'tag-web',  icon:'🌐' },
+    mini: { label:'小程序', tag:'小程序', cls:'tag-mini', icon:'💚' },
+    tel:  { label:'电话',   tag:'电话',   cls:'tag-tel',  icon:'📞' },
+    map:  { label:'导航',   tag:'导航',   cls:'tag-map',  icon:'🗺️' },
+    copy: { label:'复制',   tag:'复制',   cls:'tag-copy', icon:'📋' }
+  };
+
+  var ICONS = ['🏥','👶','📅','💊','🩺','🧪','🏨','📞','🗺️','💚','📋','⭐','🔬','🧬','💉','🚑'];
+
+  function $(id) { return document.getElementById(id); }
+
+  /* ---------- 数据 ---------- */
+  function load() {
+    try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; }
+    catch (e) { return []; }
+  }
+  function save(list) {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(list)); }
+    catch (e) { showToast('保存失败：存储空间不足'); }
+  }
+
+  /* ---------- Toast ---------- */
+  var toastTimer = null;
+  function showToast(msg, ms) {
+    var t = $('toast');
+    t.textContent = msg;
+    t.style.display = 'block';
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.style.display = 'none'; }, ms || 2200);
+  }
+
+  /* ---------- 剪贴板（微信优先） ---------- */
+  function copyText(text, okMsg) {
+    if (window.WeixinJSBridge && window.WeixinJSBridge.invoke) {
+      try {
+        WeixinJSBridge.invoke('clipboard.setData', { data: text }, function () {
+          showToast(okMsg || '✅ 已复制');
+        });
+        return;
+      } catch (e) {}
+    }
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    ta.setAttribute('readonly', '');
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, 999999);
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta);
+    if (ok) { showToast(okMsg || '✅ 已复制'); return; }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () {
+        showToast(okMsg || '✅ 已复制');
+      }).catch(function () {
+        showToast('复制失败，请长按手动复制');
+      });
+      return;
+    }
+    showToast('复制失败，请长按手动复制');
+  }
+
+  /* ---------- 打开入口 ---------- */
+  function openItem(it) {
+    if (!it) return;
+    // 小程序：统一弹「打开指引」（有码→长按识别；无码→分步提醒 + 复制）
+    if (it.type === 'mini') { showMiniGuide(it); return; }
+    if (!it.url) { showToast('该入口还没有链接'); return; }
+    switch (it.type) {
+      case 'url':
+        window.location.href = it.url;
+        break;
+      case 'tel':
+        window.location.href = 'tel:' + String(it.url).replace(/\s|-/g, '');
+        break;
+      case 'map':
+        window.location.href = 'https://uri.amap.com/search?keyword=' + encodeURIComponent(it.url);
+        break;
+      case 'copy':
+      default:
+        copyText(it.url, '✅ 已复制：' + (it.name || ''));
+        break;
+    }
+  }
+
+  /* ---------- 小程序打开指引 ---------- */
+  var guideId = null;
+
+  function showMiniGuide(it) {
+    guideId = it.id;
+    var hasQr = !!it.qr, hasUrl = !!it.url;
+
+    $('qrTitle').textContent = it.name;
+    $('qrSub').textContent = hasQr ? '小程序码 · 长按识别' : '小程序 · 需复制链接打开';
+
+    if (hasQr) {
+      $('qrImgWrap').style.display = 'block';
+      $('qrImg').src = it.qr;
+      $('qrHint').innerHTML = '👆 长按上方图片<br>选「识别图中小程序码」即可直接打开';
+    } else {
+      $('qrImgWrap').style.display = 'none';
+    }
+
+    // 无码才显示分步提醒；有码时如果同时有链接，给个备用复制按钮
+    $('miniSteps').style.display = hasQr ? 'none' : 'block';
+    $('qrCopy').style.display = hasUrl ? 'block' : 'none';
+    $('qrCopy').textContent = hasQr ? '复制链接（备用）' : '① 复制小程序链接';
+
+    $('qrOverlay').classList.add('show');
+  }
+
+  function hideQr() { $('qrOverlay').classList.remove('show'); }
+
+  $('qrCopy').addEventListener('click', function () {
+    var it = findById(guideId);
+    if (!it || !it.url) { showToast('这个入口没有链接，请先编辑补充'); return; }
+    copyText(it.url, '✅ 已复制 → 回微信粘贴发送，点开即可');
+  });
+  $('qrClose').addEventListener('click', hideQr);
+  $('qrOverlay').addEventListener('click', function (e) {
+    if (e.target === $('qrOverlay')) hideQr();
+  });
+
+  /* ---------- 渲染 ---------- */
+  var searchVal = '';
+
+  function render() {
+    var list = load();
+    var area = $('listArea');
+    var kw = searchVal.trim().toLowerCase();
+
+    var shown = list.filter(function (it) {
+      if (!kw) return true;
+      return (it.name || '').toLowerCase().indexOf(kw) >= 0 ||
+             (it.note || '').toLowerCase().indexOf(kw) >= 0;
+    });
+
+    // 空状态
+    if (list.length === 0) {
+      area.innerHTML =
+        '<div class="empty">' +
+          '<div class="empty-circle" id="emptyAdd">＋</div>' +
+          '<div class="empty-title">还没有添加任何入口</div>' +
+          '<div class="empty-sub">点击上方 ＋ 或底部「添加」<br>把医院的预约挂号链接存进来<br>以后一点就开，不用再翻聊天记录</div>' +
+        '</div>';
+      var ea = $('emptyAdd');
+      if (ea) ea.addEventListener('click', function () { openModal(); });
+      return;
+    }
+
+    var html = '<div class="group-title"><span>全部入口（' + list.length + '）</span>' +
+               (kw ? '<span>匹配 ' + shown.length + ' 个</span>' : '') + '</div>';
+    html += '<div class="grid">';
+
+    shown.forEach(function (it) {
+      var ty = TYPES[it.type] || TYPES.url;
+      var desc = it.note || ty.label;
+      if (!it.note && it.type === 'mini') {
+        desc = it.qr ? '长按识别' : '点开看步骤';
+      }
+      html +=
+        '<div class="card" data-id="' + it.id + '">' +
+          '<span class="card-tag ' + ty.cls + '">' + ty.tag + '</span>' +
+          '<div class="card-icon">' + (it.icon || '🏥') + '</div>' +
+          '<div class="card-name">' + esc(it.name) + '</div>' +
+          '<div class="card-desc">' + esc(desc) + '</div>' +
+        '</div>';
+    });
+
+    html +=
+        '<div class="card card-add" id="gridAdd">' +
+          '<div class="add-icon">＋</div>' +
+          '<div class="add-text">添加</div>' +
+        '</div>' +
+      '</div>';
+
+    if (shown.length === 0) {
+      html += '<div class="empty-sub" style="text-align:center;margin-top:14px">没有匹配「' + esc(searchVal) + '」的入口</div>';
+    }
+
+    area.innerHTML = html;
+
+    // 绑定卡片
+    var cards = area.querySelectorAll('.card[data-id]');
+    Array.prototype.forEach.call(cards, function (card) {
+      var id = card.getAttribute('data-id');
+      var timer = null, longPressed = false;
+
+      function start() {
+        longPressed = false;
+        timer = setTimeout(function () {
+          longPressed = true;
+          openSheet(id);
+        }, 600);
+      }
+      function cancel() { clearTimeout(timer); }
+
+      card.addEventListener('touchstart', start, { passive:true });
+      card.addEventListener('touchend', cancel);
+      card.addEventListener('touchmove', cancel);
+      card.addEventListener('touchcancel', cancel);
+      card.addEventListener('mousedown', start);
+      card.addEventListener('mouseup', cancel);
+      card.addEventListener('mouseleave', cancel);
+      card.addEventListener('click', function (e) {
+        e.preventDefault();
+        if (longPressed) return;
+        var it = findById(id);
+        if (it) openItem(it);
+      });
+      // 阻止长按弹出系统菜单
+      card.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+    });
+
+    var ga = $('gridAdd');
+    if (ga) ga.addEventListener('click', function () { openModal(); });
+  }
+
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function findById(id) {
+    var list = load();
+    for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
+    return null;
+  }
+
+  /* ---------- 操作菜单 ---------- */
+  var sheetId = null;
+  function openSheet(id) {
+    var it = findById(id);
+    if (!it) return;
+    sheetId = id;
+    var ty = TYPES[it.type] || TYPES.url;
+    $('shIcon').textContent = it.icon || '🏥';
+    $('shName').textContent = it.name;
+    $('shSub').textContent = ty.label + ' · ' + (it.qr ? '小程序码（长按识别）' : (it.url || '（无链接）'));
+
+    var items = [
+      { icon:'▶️', text:'打开', fn: function () { closeSheet(); openItem(it); } },
+      { icon:'📋', text:'复制链接', fn: function () { copyText(it.url || '', '✅ 链接已复制'); closeSheet(); } },
+      { icon:'✏️', text:'编辑', fn: function () { closeSheet(); openModal(it); } },
+      { icon:'🗑️', text:'删除', danger:true, fn: function () {
+          if (!confirm('确定删除「' + it.name + '」？')) return;
+          save(load().filter(function (x) { return x.id !== id; }));
+          closeSheet(); render(); showToast('已删除');
+        } }
+    ];
+
+    var box = $('sheetItems');
+    box.innerHTML = '';
+    items.forEach(function (m) {
+      var d = document.createElement('div');
+      d.className = 'sheet-item' + (m.danger ? ' danger' : '');
+      d.innerHTML = '<span class="si-icon">' + m.icon + '</span><span>' + m.text + '</span>';
+      d.addEventListener('click', m.fn);
+      box.appendChild(d);
+    });
+
+    $('sheetMask').classList.add('show');
+    $('sheet').classList.add('show');
+  }
+  function closeSheet() {
+    $('sheetMask').classList.remove('show');
+    $('sheet').classList.remove('show');
+  }
+  $('sheetMask').addEventListener('click', closeSheet);
+
+  /* ---------- 添加/编辑弹窗 ---------- */
+  var editId = null;
+
+  function openModal(it) {
+    editId = it ? it.id : null;
+    $('modalTitle').textContent = it ? '✏️ 编辑入口' : '＋ 添加入口';
+    $('f_name').value = it ? (it.name || '') : '';
+    $('f_icon').value = it ? (it.icon || '') : '';
+    $('f_type').value = it ? (it.type || 'url') : 'url';
+    $('f_url').value = it ? (it.url || '') : '';
+    $('f_note').value = it ? (it.note || '') : '';
+    qrData = it ? (it.qr || '') : '';
+    $('f_qrfile').value = '';
+    renderQrPreview();
+    syncTypeRows();
+    $('mask').classList.add('show');
+    if (!it) setTimeout(function () { $('f_name').focus(); }, 120);
+  }
+  function closeModal() { $('mask').classList.remove('show'); editId = null; }
+
+  var TYPE_HINTS = {
+    url:  { lbl:'网页链接',  ph:'https://...',        hint:'粘贴医院预约挂号页面的完整地址' },
+    mini: { lbl:'小程序链接（可选）', ph:'#小程序://名称/xxxxx', hint:'有下面的小程序码就不用填这个；填了则作为备用（点击复制后在微信粘贴打开）' },
+    tel:  { lbl:'电话号码',  ph:'0755-12345678',      hint:'点击卡片将直接拨打该号码' },
+    map:  { lbl:'导航目的地', ph:'深圳市龙岗中心医院',  hint:'填医院名称即可，点击后跳高德地图搜索' },
+    copy: { lbl:'要复制的文字', ph:'账号 / 地址 / 电话等', hint:'点击卡片即复制这段文字，方便粘贴' }
+  };
+
+  function syncTypeRows() {
+    var t = $('f_type').value;
+    var h = TYPE_HINTS[t] || TYPE_HINTS.url;
+    $('lbl_url').textContent = h.lbl;
+    $('f_url').placeholder = h.ph;
+    $('hint_url').textContent = h.hint;
+    $('row_url').style.display = '';
+    // 小程序：额外显示「小程序码」上传行
+    $('row_qr').style.display = (t === 'mini') ? '' : 'none';
+    if (t === 'mini') {
+      $('f_url').style.minHeight = '38px';
+      $('lbl_url').textContent = '小程序链接（选填 · 无码时用）';
+    } else if (t === 'tel' || t === 'map' || t === 'copy') {
+      $('f_url').style.minHeight = '38px';
+    } else {
+      $('f_url').style.minHeight = '46px';
+    }
+  }
+  $('f_type').addEventListener('change', syncTypeRows);
+
+  /* ---------- 小程序码：选择图片 → 压缩 → 预览 ---------- */
+  var qrData = '';
+
+  function renderQrPreview() {
+    if (qrData) {
+      $('qrPreview').src = qrData;
+      $('qrPreviewWrap').style.display = 'block';
+    } else {
+      $('qrPreview').src = '';
+      $('qrPreviewWrap').style.display = 'none';
+    }
+  }
+
+  $('f_qrfile').addEventListener('change', function () {
+    var f = this.files && this.files[0];
+    if (!f) return;
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      var img = new Image();
+      img.onload = function () {
+        var max = 360;
+        var sc = Math.min(1, max / Math.max(img.width, img.height));
+        var cv = document.createElement('canvas');
+        cv.width = Math.max(1, Math.round(img.width * sc));
+        cv.height = Math.max(1, Math.round(img.height * sc));
+        var cx = cv.getContext('2d');
+        cx.fillStyle = '#fff';
+        cx.fillRect(0, 0, cv.width, cv.height);
+        cx.drawImage(img, 0, 0, cv.width, cv.height);
+        try {
+          qrData = cv.toDataURL('image/jpeg', 0.85);
+        } catch (err) {
+          qrData = e.target.result;   // 兜底：直接用原图
+        }
+        renderQrPreview();
+        showToast('✅ 小程序码已就绪');
+      };
+      img.onerror = function () { showToast('图片读取失败，请换一张'); };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(f);
+  });
+
+  $('btnQrClear').addEventListener('click', function () {
+    qrData = '';
+    $('f_qrfile').value = '';
+    renderQrPreview();
+  });
+
+  // 图标快选
+  (function () {
+    var box = $('iconPick');
+    ICONS.forEach(function (ic) {
+      var s = document.createElement('span');
+      s.textContent = ic;
+      s.addEventListener('click', function () { $('f_icon').value = ic; });
+      box.appendChild(s);
+    });
+  })();
+
+  $('btnCancel').addEventListener('click', closeModal);
+  $('mask').addEventListener('click', function (e) { if (e.target === $('mask')) closeModal(); });
+
+  $('btnSave').addEventListener('click', function () {
+    var name = $('f_name').value.trim();
+    var icon = $('f_icon').value.trim() || '🏥';
+    var type = $('f_type').value;
+    var url  = $('f_url').value.trim();
+    var note = $('f_note').value.trim();
+
+    if (!name) { showToast('请填写名称'); return; }
+    if (type === 'mini') {
+      if (!qrData && !url) { showToast('小程序：请上传小程序码，或填写小程序链接'); return; }
+    } else if (!url) {
+      showToast('请填写' + (TYPE_HINTS[type] || TYPE_HINTS.url).lbl);
+      return;
+    }
+
+    var list = load();
+    var qrVal = (type === 'mini') ? qrData : '';
+    if (editId) {
+      for (var i = 0; i < list.length; i++) {
+        if (list[i].id === editId) {
+          list[i].name = name; list[i].icon = icon; list[i].type = type;
+          list[i].url = url; list[i].note = note; list[i].qr = qrVal;
+          break;
+        }
+      }
+      showToast('✅ 已保存');
+    } else {
+      list.push({
+        id: 'i_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+        name: name, icon: icon, type: type, url: url, note: note, qr: qrVal,
+        ts: Date.now()
+      });
+      showToast('✅ 已添加');
+    }
+    save(list);
+    closeModal();
+    render();
+  });
+
+  /* ---------- 搜索 ---------- */
+  $('search').addEventListener('input', function () {
+    searchVal = this.value;
+    $('searchWrap').classList.toggle('has-val', !!this.value);
+    render();
+  });
+  $('searchClear').addEventListener('click', function () {
+    $('search').value = ''; searchVal = '';
+    $('searchWrap').classList.remove('has-val');
+    render();
+  });
+
+  /* ---------- 微信桥接就绪 ---------- */
+  document.addEventListener('WeixinJSBridgeReady', function () {}, false);
+
+  /* ---------- 拜访排班表 ---------- */
+  var SCHED_KEY = 'hosp_nav_sched_v1';
+  var WEEK_NAMES = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+  var weekOffset = 0;
+  var schKey = null;
+  var schHalf = 'am';
+
+  function loadSched() {
+    try { return JSON.parse(localStorage.getItem(SCHED_KEY)) || {}; }
+    catch (e) { return {}; }
+  }
+  function saveSched(o) {
+    try { localStorage.setItem(SCHED_KEY, JSON.stringify(o)); }
+    catch (e) { showToast('保存失败：存储空间不足'); }
+  }
+  function ymd(d) {
+    var m = d.getMonth() + 1, dd = d.getDate();
+    return d.getFullYear() + '-' + (m < 10 ? '0' : '') + m + '-' + (dd < 10 ? '0' : '') + dd;
+  }
+  function parseKey(k) {
+    var p = String(k).split('-');
+    return new Date(+p[0], +p[1] - 1, +p[2]);
+  }
+  function mondayOf(base) {
+    var d = new Date(base.getFullYear(), base.getMonth(), base.getDate());
+    var dow = d.getDay();
+    d.setDate(d.getDate() + (dow === 0 ? -6 : 1 - dow));
+    return d;
+  }
+  function weekDays(offset) {
+    var m = mondayOf(new Date());
+    m.setDate(m.getDate() + offset * 7);
+    var out = [];
+    for (var i = 0; i < 7; i++) {
+      var d = new Date(m.getFullYear(), m.getMonth(), m.getDate());
+      d.setDate(m.getDate() + i);
+      out.push(d);
+    }
+    return out;
+  }
+  function md(d) { return (d.getMonth() + 1) + '/' + d.getDate(); }
+
+  // 兼容旧数据：{h,n} 视为上午
+  function normDay(rec) {
+    if (!rec) return { am: null, pm: null };
+    if (rec.am || rec.pm) return { am: rec.am || null, pm: rec.pm || null };
+    if (rec.h || rec.n || rec.p) return { am: { h: rec.h || '', p: rec.p || '', n: rec.n || '' }, pm: null };
+    return { am: null, pm: null };
+  }
+  function slotHtml(key, half, rec) {
+    var label = (half === 'am') ? '上午' : '下午';
+    var has = rec && (rec.h || rec.p || rec.n);
+    // 主标题优先：单位 > 姓名 > 备注
+    var title = has ? (rec.h || rec.p || rec.n) : '未安排';
+    var sub = [];
+    if (has && rec.h && rec.p) sub.push(rec.p);          // 单位占了主行，姓名进副行
+    if (has && (rec.h || rec.p) && rec.n) sub.push(rec.n); // 主行是单位/姓名时，备注进副行
+    return '<div class="slot' + (has ? '' : ' empty') + '" data-key="' + key + '" data-half="' + half + '">' +
+      '<span class="half ' + half + '">' + label + '</span>' +
+      '<span class="slc">' +
+        '<span class="slh">' + esc(title) + '</span>' +
+        (sub.length ? '<span class="sln">' + esc(sub.join(' · ')) + '</span>' : '') +
+      '</span>' +
+    '</div>';
+  }
+
+  function renderSched() {
+    var days = weekDays(weekOffset);
+    var sched = loadSched();
+    var todayStr = ymd(new Date());
+
+    $('schedRange').textContent = md(days[0]) + ' - ' + md(days[6]);
+    $('schedToday').textContent = weekOffset === 0 ? '本周' : '回到本周';
+    $('schedToday').classList.toggle('on', weekOffset === 0);
+
+    var html = '';
+    days.forEach(function (d) {
+      var key = ymd(d);
+      var dow = d.getDay();
+      var day = normDay(sched[key]);
+      var isToday = (key === todayStr);
+      var isWeekend = (dow === 0 || dow === 6);
+      html +=
+        '<div class="srow' + (isToday ? ' today' : '') + (isWeekend ? ' weekend' : '') + '" data-key="' + key + '">' +
+          '<div class="sd">' +
+            '<span class="w">' + WEEK_NAMES[dow] + (isToday ? '·今' : '') + '</span>' +
+            '<span class="dt">' + md(d) + '</span>' +
+          '</div>' +
+          '<div class="slots">' +
+            slotHtml(key, 'am', day.am) +
+            slotHtml(key, 'pm', day.pm) +
+          '</div>' +
+        '</div>';
+    });
+    $('schedList').innerHTML = html;
+
+    var slots = $('schedList').querySelectorAll('.slot');
+    Array.prototype.forEach.call(slots, function (s) {
+      s.addEventListener('click', function () {
+        openSch(s.getAttribute('data-key'), s.getAttribute('data-half'));
+      });
+    });
+  }
+
+  function syncSchCustom() {
+    $('schHospCustom').style.display = ($('schHosp').value === '__custom') ? 'block' : 'none';
+  }
+  $('schHosp').addEventListener('change', syncSchCustom);
+
+  function openSch(key, half) {
+    schKey = key;
+    schHalf = (half === 'pm') ? 'pm' : 'am';
+    var day = normDay(loadSched()[key]);
+    var rec = day[schHalf] || {};
+    var d = parseKey(key);
+    $('schTitle').textContent = md(d) + ' ' + WEEK_NAMES[d.getDay()] + ' · ' + (schHalf === 'am' ? '上午' : '下午');
+
+    var sel = $('schHosp');
+    sel.innerHTML = '<option value="">— 不安排 —</option>';
+    var seen = {};
+    load().forEach(function (it) {
+      if (it.name && !seen[it.name]) {
+        seen[it.name] = 1;
+        var o = document.createElement('option');
+        o.value = it.name; o.textContent = it.name;
+        sel.appendChild(o);
+      }
+    });
+    var oc = document.createElement('option');
+    oc.value = '__custom'; oc.textContent = '✎ 手填医院名称';
+    sel.appendChild(oc);
+
+    $('schHospCustom').value = '';
+    if (rec.h) {
+      var matched = false;
+      for (var i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].value === rec.h) { sel.selectedIndex = i; matched = true; break; }
+      }
+      if (!matched) { sel.value = '__custom'; $('schHospCustom').value = rec.h; }
+    } else {
+      sel.selectedIndex = 0;
+    }
+    $('schPerson').value = rec.p || '';
+    $('schNote').value = rec.n || '';
+    syncSchCustom();
+    $('schMask').classList.add('show');
+  }
+
+  $('schCancel').addEventListener('click', function () { $('schMask').classList.remove('show'); });
+  $('schMask').addEventListener('click', function (e) {
+    if (e.target === $('schMask')) $('schMask').classList.remove('show');
+  });
+
+  $('schSave').addEventListener('click', function () {
+    var v = $('schHosp').value;
+    var h = (v === '__custom') ? $('schHospCustom').value.trim() : v;
+    var p = $('schPerson').value.trim();
+    var n = $('schNote').value.trim();
+    var sched = loadSched();
+    var day = normDay(sched[schKey]);
+    if (!h && !p && !n) { day[schHalf] = null; }
+    else { day[schHalf] = { h: h, p: p, n: n }; }
+    if (!day.am && !day.pm) { delete sched[schKey]; }
+    else { sched[schKey] = { am: day.am, pm: day.pm }; }
+    saveSched(sched);
+    $('schMask').classList.remove('show');
+    renderSched();
+    showToast((h || p || n) ? '✅ 已保存' : '已清除该时段');
+  });
+
+  $('schedPrev').addEventListener('click', function () { weekOffset--; renderSched(); });
+  $('schedNext').addEventListener('click', function () { weekOffset++; renderSched(); });
+  $('schedToday').addEventListener('click', function () { weekOffset = 0; renderSched(); });
+
+  $('schedCopy').addEventListener('click', function () {
+    var days = weekDays(weekOffset), sched = loadSched();
+    var lines = ['📅 拜访排班表 ' + md(days[0]) + '-' + md(days[6])];
+    var cnt = 0;
+    days.forEach(function (d) {
+      var day = normDay(sched[ymd(d)]);
+      if (!day.am && !day.pm) return;
+      lines.push('');
+      lines.push(WEEK_NAMES[d.getDay()] + ' ' + md(d));
+      ['am', 'pm'].forEach(function (hf) {
+        var r = day[hf];
+        if (!r || (!r.h && !r.p && !r.n)) return;
+        cnt++;
+        var hfLabel = (hf === 'am' ? '上午' : '下午');
+        var line;
+        if (r.h || r.p) {
+          var bits = [];
+          if (r.h) bits.push(r.h);
+          if (r.p) bits.push(r.p);
+          line = '  ' + hfLabel + '  ' + bits.join(' · ');
+          if (r.n) line += '（' + r.n + '）';
+        } else {
+          line = '  ' + hfLabel + '  ' + r.n;   // 只填了备注
+        }
+        lines.push(line);
+      });
+    });
+    if (!cnt) { showToast('本周还没有排班'); return; }
+    lines.push('');
+    lines.push('共安排 ' + cnt + ' 个时段');
+    copyText(lines.join('\n'), '✅ 排班已复制，可直接发微信');
+  });
+
+  $('schedFill').addEventListener('click', function () {
+    var sched = loadSched();
+    var cur = weekDays(weekOffset), prev = weekDays(weekOffset - 1);
+    var n = 0;
+    cur.forEach(function (d, i) {
+      var day = normDay(sched[ymd(prev[i])]);
+      if (day.am || day.pm) {
+        sched[ymd(d)] = { am: day.am, pm: day.pm };
+        n++;
+      }
+    });
+    if (!n) { showToast('上周没有排班可套用'); return; }
+    saveSched(sched);
+    renderSched();
+    showToast('✅ 已套用上周 ' + n + ' 天安排');
+  });
+
+  $('schedClear').addEventListener('click', function () {
+    var sched = loadSched();
+    var days = weekDays(weekOffset), n = 0;
+    days.forEach(function (d) { if (sched[ymd(d)]) { delete sched[ymd(d)]; n++; } });
+    if (!n) { showToast('本周本来就没有安排'); return; }
+    if (!confirm('清空本周 ' + n + ' 天的安排？')) return;
+    saveSched(sched);
+    renderSched();
+    showToast('已清空本周');
+  });
+
+  renderSched();
+
+  /* ---------- 主题：跟随系统 / 深色 / 浅色 ---------- */
+  var THEME_KEY = 'hosp_nav_theme';
+  var themePref = 'auto';
+  var mqDark = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+
+  function resolveDark() {
+    if (themePref === 'dark') return true;
+    if (themePref === 'light') return false;
+    return !!(mqDark && mqDark.matches);
+  }
+  function themeName() {
+    return themePref === 'auto' ? '跟随系统' : (themePref === 'dark' ? '深色' : '浅色');
+  }
+  function applyTheme() {
+    var dark = resolveDark();
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    var btn = $('btnTheme');
+    if (btn) {
+      btn.textContent = themePref === 'dark' ? '🌙' : (themePref === 'light' ? '☀️' : '◐');
+      btn.title = '主题：' + themeName();
+    }
+    var meta = document.querySelector('meta[name=theme-color]');
+    if (meta) meta.setAttribute('content', dark ? '#161b22' : '#4a90d9');
+  }
+  (function initTheme() {
+    try { themePref = localStorage.getItem(THEME_KEY) || 'auto'; } catch (e) { themePref = 'auto'; }
+    if (['auto', 'light', 'dark'].indexOf(themePref) < 0) themePref = 'auto';
+    applyTheme();
+    if (mqDark) {
+      var onChange = function () { if (themePref === 'auto') applyTheme(); };
+      if (mqDark.addEventListener) mqDark.addEventListener('change', onChange);
+      else if (mqDark.addListener) mqDark.addListener(onChange);
+    }
+  })();
+  $('btnTheme').addEventListener('click', function () {
+    themePref = themePref === 'auto' ? 'dark' : (themePref === 'dark' ? 'light' : 'auto');
+    try { localStorage.setItem(THEME_KEY, themePref); } catch (e) {}
+    applyTheme();
+    showToast('主题：' + themeName());
+  });
+
+  /* ---------- 键盘遮挡修复（iOS 键盘顶住输入框） ---------- */
+  (function initKeyboardFix() {
+    var vv = window.visualViewport;
+    function sync() {
+      if (!vv) return;
+      var kbOpen = (window.innerHeight - vv.height) > 130;
+      document.body.classList.toggle('kb-open', kbOpen);
+      document.documentElement.style.setProperty('--vvh', vv.height + 'px');
+    }
+    if (vv) {
+      vv.addEventListener('resize', sync);
+      vv.addEventListener('scroll', sync);
+      sync();
+    }
+    // 聚焦后把输入框滚到可视区中间
+    document.addEventListener('focusin', function (e) {
+      var t = e.target;
+      if (!t || !t.tagName) return;
+      var tag = t.tagName.toLowerCase();
+      if (tag !== 'input' && tag !== 'textarea' && tag !== 'select') return;
+      setTimeout(function () {
+        try { t.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+        catch (err) { try { t.scrollIntoView(); } catch (e2) {} }
+      }, 280);
+    });
+  })();
+
+  /* ---------- PWA：离线缓存 + 加到桌面 ---------- */
+  var deferredPrompt = null;
+  var isWeChat = /MicroMessenger/i.test(navigator.userAgent);
+  var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  var isStandalone = window.navigator.standalone === true ||
+                     (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+
+  function showInstallRow(text) {
+    var row = $('installRow');
+    if (!row) return;
+    if (text) $('btnInstall').textContent = text;
+    row.style.display = 'block';
+  }
+
+  (function initPWA() {
+    // Service Worker：只在 https / localhost 注册（file:// 会失败）
+    var host = location.hostname;
+    if ('serviceWorker' in navigator &&
+        (location.protocol === 'https:' || host === 'localhost' || host === '127.0.0.1')) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('sw.js').catch(function () {});
+      });
+    }
+    if (isStandalone) return;            // 已经是桌面图标打开的，不用再提示
+    if (isWeChat) return;                // 微信里装不了，走"浏览器打开"的提示（见下）
+    if (isIOS) showInstallRow('📲 添加到主屏幕（Safari：分享 → 添加到主屏幕）');
+  })();
+
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (!isStandalone) showInstallRow('📲 添加到手机桌面');
+  });
+
+  $('btnInstall').addEventListener('click', function () {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(function () { deferredPrompt = null; });
+      return;
+    }
+    if (isIOS) {
+      showToast('点底部「分享」按钮 → 选「添加到主屏幕」', 4200);
+      return;
+    }
+    showToast('用手机浏览器打开本页，再选「添加到桌面」', 3800);
+  });
+
+  window.addEventListener('appinstalled', function () {
+    deferredPrompt = null;
+    $('installRow').style.display = 'none';
+    showToast('✅ 已添加到桌面');
+  });
+
+  /* ---------- 启动 ---------- */
+  render();
+})();
+</script>
+</body>
+</html>
