@@ -1,7 +1,7 @@
 /* 医院预约导航 · Service Worker
    策略：页面(导航请求)走「网络优先 + 缓存兜底」，静态资源走「缓存优先 + 后台更新」
    目的：断网/弱网也能打开，同时保证改了 index.html 后能拿到新版 */
-const CACHE = 'hosp-nav-v3';
+const CACHE = 'hosp-nav-v4';
 const ASSETS = [
   './',
   './index.html',

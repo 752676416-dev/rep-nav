@@ -410,40 +410,8 @@
 
   <div id="listArea"></div>
 
-  <div class="footer">
-    <b>📌 使用说明</b><br>
-    · <b>点击</b>卡片 → 打开该入口<br>
-    · <b>长按</b>卡片 → 编辑 / 复制链接 / 删除<br>
-    · <b>网页</b>入口点击直接跳转<br>
-    · <b>小程序</b>入口：微信不允许网页直跳小程序，点卡片会弹出<b>打开指引</b><br>
-    &nbsp;&nbsp;· 已传<b>小程序码</b> → 长按图片识别，直接进<br>
-    &nbsp;&nbsp;· 只有链接 → 按指引复制后回微信粘贴发送<br>
-    · 若你有小程序官方 <b>URL Link</b>（wxaurl.cn 开头），存成「网页」类型即可直接跳转<br>
-    · 点卡片区的 <b>＋</b> 可继续添加入口
-  </div>
-
   <div class="install-row" id="installRow" style="display:none">
     <button id="btnInstall">📲 添加到手机桌面</button>
-  </div>
-
-  <!-- ===== 拜访排班表 ===== -->
-  <div class="sched">
-    <div class="sched-head">
-      <span class="sched-title">📅 拜访排班表</span>
-      <span class="sched-range" id="schedRange"></span>
-    </div>
-    <div class="sched-nav">
-      <button id="schedPrev">‹ 上周</button>
-      <button id="schedToday" class="on">本周</button>
-      <button id="schedNext">下周 ›</button>
-    </div>
-    <div id="schedList"></div>
-    <div class="sched-actions">
-      <button class="primary" id="schedCopy">📤 复制排班</button>
-      <button id="schedFill">↩ 套用上周</button>
-      <button id="schedClear">🗑 清空本周</button>
-    </div>
-    <div class="sched-tip">点某天的<b>上午 / 下午</b> → 选拜访单位 + 填<b>姓名</b>和拜访目的 · 数据存在本机</div>
   </div>
 
   <!-- ===== 政策目录查询 ===== -->
@@ -500,6 +468,26 @@
         <span class="pg">›</span>
       </a>
     </div>
+  </div>
+
+  <!-- ===== 拜访排班表 ===== -->
+  <div class="sched">
+    <div class="sched-head">
+      <span class="sched-title">📅 拜访排班表</span>
+      <span class="sched-range" id="schedRange"></span>
+    </div>
+    <div class="sched-nav">
+      <button id="schedPrev">‹ 上周</button>
+      <button id="schedToday" class="on">本周</button>
+      <button id="schedNext">下周 ›</button>
+    </div>
+    <div id="schedList"></div>
+    <div class="sched-actions">
+      <button class="primary" id="schedCopy">📤 复制排班</button>
+      <button id="schedFill">↩ 套用上周</button>
+      <button id="schedClear">🗑 清空本周</button>
+    </div>
+    <div class="sched-tip">点某天的<b>上午 / 下午</b> → 选拜访单位 + 填<b>姓名</b>和拜访目的 · 数据存在本机</div>
   </div>
 
 </div>
