@@ -256,6 +256,29 @@
   .sched-actions button.primary { background:#eaf3fd; color:#2e7fb8; font-weight:600; }
   .sched-tip { font-size:10.5px; color:#a8b6c4; margin-top:9px; line-height:1.7; }
 
+  /* ===== 政策目录查询 ===== */
+  .policy {
+    margin-top:14px; background:#fff; border-radius:12px; padding:14px 14px 10px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.04);
+  }
+  .policy-title { font-size:14px; font-weight:700; color:#2c3e50; margin-bottom:4px; }
+  .policy-sub { font-size:10.5px; color:#8a9baa; margin-bottom:10px; }
+  .plist { display:flex; flex-direction:column; gap:7px; }
+  .plink {
+    display:flex; align-items:center; gap:10px; padding:11px 12px;
+    border-radius:10px; background:#f7fafd; text-decoration:none; color:inherit;
+    cursor:pointer; -webkit-user-select:none; user-select:none;
+  }
+  .plink:active { background:#eaf2fb; }
+  .plink .pi {
+    width:34px; height:34px; flex:0 0 34px; border-radius:9px; background:#eaf3fd;
+    display:flex; align-items:center; justify-content:center; font-size:17px;
+  }
+  .plink .pt { flex:1; min-width:0; }
+  .plink .pn { display:block; font-size:13px; font-weight:600; color:#2c3e50; line-height:1.35; }
+  .plink .pd { display:block; font-size:10px; color:#8a9baa; margin-top:1px; }
+  .plink .pg { font-size:13px; color:#c3ced9; }
+
   /* ===== Toast ===== */
   .toast {
     position:fixed; left:50%; bottom:26px; transform:translateX(-50%);
@@ -348,6 +371,12 @@
   html[data-theme="dark"] .sched-actions button { background:#232d3a; color:#93a1b0; }
   html[data-theme="dark"] .sched-actions button.primary { background:#1d3446; color:#7ab6e6; }
   html[data-theme="dark"] .srow { border-bottom-color:#242c36; }
+  html[data-theme="dark"] .policy { background:#1c222b; }
+  html[data-theme="dark"] .plink { background:#202832; }
+  html[data-theme="dark"] .plink:active { background:#26313d; }
+  html[data-theme="dark"] .plink .pi { background:#1d3446; }
+  html[data-theme="dark"] .plink .pn { color:#e6ecf3; }
+  html[data-theme="dark"] .policy-title { color:#e6ecf3; }
   html[data-theme="dark"] .srow.today { background:#1a2634; }
   html[data-theme="dark"] .slot { background:#202832; }
   html[data-theme="dark"] .slot:active { background:#26313d; }
@@ -415,6 +444,62 @@
       <button id="schedClear">🗑 清空本周</button>
     </div>
     <div class="sched-tip">点某天的<b>上午 / 下午</b> → 选拜访单位 + 填<b>姓名</b>和拜访目的 · 数据存在本机</div>
+  </div>
+
+  <!-- ===== 政策目录查询 ===== -->
+  <div class="policy">
+    <div class="policy-title">📚 政策目录查询</div>
+    <div class="policy-sub">常用药品目录快捷入口 · 点击直达</div>
+    <div class="plist">
+      <a class="plink" href="https://biaodan100.com/q/1ljfvh" target="_blank" rel="noopener">
+        <span class="pi">💊</span>
+        <span class="pt">
+          <span class="pn">2018年国家基药目录</span>
+          <span class="pd">品种名称 / 剂型规格 / 备注</span>
+        </span>
+        <span class="pg">›</span>
+      </a>
+      <a class="plink" href="https://biaodan.info/q/ae0v9f" target="_blank" rel="noopener">
+        <span class="pi">🏥</span>
+        <span class="pt">
+          <span class="pn">医保目录（2026）</span>
+          <span class="pd">医保类型 / 药品名称 / 支付标准</span>
+        </span>
+        <span class="pg">›</span>
+      </a>
+      <a class="plink" href="https://biaodan100.com/q/i4at53" target="_blank" rel="noopener">
+        <span class="pi">🏷️</span>
+        <span class="pt">
+          <span class="pn">国家集采 · 广东省中标目录</span>
+          <span class="pd">按通用名 + 批次查询（4+7 至第十二批）</span>
+        </span>
+        <span class="pg">›</span>
+      </a>
+      <a class="plink" href="http://m.gzgdyy.net/col.jsp?id=220" target="_blank" rel="noopener">
+        <span class="pi">🌿</span>
+        <span class="pt">
+          <span class="pn">全国中成药 / 中药饮片集采目录</span>
+          <span class="pd">广东医药 · 数据查询</span>
+        </span>
+        <span class="pg">›</span>
+      </a>
+      <a class="plink" href="http://m.gzgdyy.net/col.jsp?id=109" target="_blank" rel="noopener">
+        <span class="pi">📜</span>
+        <span class="pt">
+          <span class="pn">广东省集采目录</span>
+          <span class="pd">广东医药 · 数据查询</span>
+        </span>
+        <span class="pg">›</span>
+      </a>
+      <a class="plink" href="http://m.gzgdyy.net/col.jsp?id=211" target="_blank" rel="noopener">
+        <span class="pi">⚖️</span>
+        <span class="pt">
+          <span class="pn">药品交易平台目录</span>
+          <span class="pd">广东医药 · 数据查询</span>
+        </span>
+        <span class="pg">›</span>
+      </a>
+    </div>
   </div>
 
 </div>
